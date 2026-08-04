@@ -122,6 +122,25 @@ The **Inkfall** game's word list (`assets/games/inkfall/words.txt`) is generated
 
 == Changelog ==
 
+= 0.9.9 =
+* Desktop Mode is now OpenStation — new name, new look, same plugin. Settings, files, sessions and desktop layouts carry over untouched.
+* A new palette and typography, with four wallpapers: Galaxy (the new default), Space, Holomesh and Pulsemesh.
+* Desktop Mode (Legacy) — a built-in desktop theme that puts the previous look back in one click, WordPress blue included.
+* Mio — a soft-body desk companion that drifts across the wallpaper and gets pushed around by your windows. Off by default; turn it on from the dock.
+* Holographic controls — switches, primary buttons and selected items catch an iridescent mesh on hover and press.
+* New Switch component, and a searchable Components tab in OS Settings.
+* Custom post types now appear in the site window, grouped into a folder named after the plugin or theme that registered them.
+* Post tiles show their featured image instead of a generic icon, which turns a catalogue into a photo grid.
+* WooCommerce — Orders, Products and Coupons as browsable folders, with out-of-stock, low-stock, backorder and sale ribbons, and a details pane showing price, stock, order totals, line items and coupon usage.
+* Plugins can accept files dropped onto their own desktop icon, via `wp.os.files.registerTilePayloadHandler()`.
+* The Games leaderboard refreshes the moment a run finishes, instead of waiting for a reload.
+* Fix closed windows reappearing after a refresh, and window state being lost when several windows were closed in quick succession.
+* Fix the widget column rendering empty.
+* Desktop icons and file tiles now fade out in Overview, so they no longer collide with window thumbnails.
+* Fix `wp.os.activity.subscribe()` never receiving events — channel names containing a slash were silently rejected.
+* The portal URL moved from `/desktop-mode/` to `/openstation/`. Reinstall the app if you added OpenStation to your home screen.
+* For plugin authors: `wp.desktop` is now `wp.os`, `<wpd-*>` components are `<os-*>`, and PHP functions and hooks use the `openstation_` prefix. Stored data — options, meta, custom tables, REST namespaces and the WordPress.org slug — is unchanged.
+
 = 0.9.8 =
 * Desktop Themes — uploadable ZIP theme system
 * Add a Drafts widget
