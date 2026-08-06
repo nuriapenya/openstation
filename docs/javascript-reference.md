@@ -2465,6 +2465,63 @@ Remove a title-bar button by id, or read a snapshot of every registered button d
 
 ---
 
+### `registerWindowMenuItem( def )` — Experimental
+
+Add a row to the **⋯ actions menu** in a matching window's title bar, after the framework's own items ("Open on startup", "Reload", "Open in browser tab", …).
+
+This is the home for a **per-window preference** or an infrequent verb — something that changes how *this* window behaves but doesn't earn permanent pixels in the title bar or the window's own toolbar. Reach for [`registerTitleBarButton`](#registertitlebarbutton-def--experimental) instead when the action is frequent enough that the user should be able to hit it without opening a menu first.
+
+Rows come in two shapes, matching the two the built-in items use:
+
+- **Action** — clicking runs `onClick` and closes the menu.
+- **Checkbox** — set `checkable: true` and supply a `checked( window )` reader. Clicking flips the indicator immediately, runs `onClick`, and leaves the menu open so the user can see the new state. `checked` is re-read **every time the menu opens**, which means whatever you persist stays authoritative: save in `onClick`, read in `checked`, and never repaint anything yourself.
+
+**Returns** nothing on success. **Throws** a `RegistrationError` on validation failure — including `checkable` without `checked`, which would otherwise paint a row that is permanently unchecked.
+
+**`WindowMenuItemDef`:**
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `string` | Unique. `[a-z0-9_/-]+` — same `vendor/sub-id` shape as `registerTitleBarButton`. Re-registering replaces. Painted onto the row as `data-menu-item-id`. |
+| `label` | `string` | Row text and accessible name. |
+| `icon` | `string` | Optional Dashicons class painted at the leading edge. Ignored for checkable rows — the check indicator owns that slot. |
+| `order` | `number` | Default 100. Sorts plugin rows against each other; built-in rows always come first. |
+| `checkable` | `boolean` | Optional. Renders `role="menuitemcheckbox"` instead of `role="menuitem"`. Requires `checked`. |
+| `checked` | `( window ) => boolean` | Required when `checkable`. Called on every menu open and every registry repaint — keep it a cheap synchronous read. |
+| `match` | `( window ) => boolean` | Predicate against the live `Window` instance. Throwing equals not-matching, and costs only this row. |
+| `onClick` | `( window ) => void` | Invoked on selection. For checkable rows the indicator has already flipped optimistically; if your write fails, the next menu open corrects the row from `checked`. |
+| `closeOnClick` | `boolean` | Optional. Defaults to `true` for action rows, `false` for checkable rows. |
+| `owner` | `string` | Optional. Set to your script handle for live-unregister-on-deactivate (see below). |
+
+```javascript
+wp.os.ready( () => {
+    let compact = localStorage.getItem( 'my-plugin/compact' ) === '1';
+
+    wp.os.registerWindowMenuItem( {
+        id:        'my-plugin/compact-rows',
+        label:     'Compact rows',
+        checkable: true,
+        checked:   () => compact,
+        match:     ( w ) => ( w.config.baseId ?? w.id ) === 'my-plugin/reports',
+        onClick:   ( w ) => {
+            compact = ! compact;
+            localStorage.setItem( 'my-plugin/compact', compact ? '1' : '0' );
+            w.element.classList.toggle( 'is-compact', compact );
+        },
+    } );
+} );
+```
+
+Registering after a window is already open is fine — the registry's repaint fan-out puts the row into the open window's menu, which is what lets a lazily-loaded native-window bundle register rows for the very window that loaded it. The built-in **Corkboard** uses exactly this shape for its "Show pins" toggle.
+
+### `unregisterWindowMenuItem( id )` / `listWindowMenuItems()` — Experimental
+
+Remove a menu row by id, or read a snapshot of every registered row (sorted by `order`). Unregistering is idempotent, and every open window's menu repaints to drop the row.
+
+There is no dedicated PHP registration surface for menu rows. Rows registered with an `owner` matching a handle passed to `openstation_register_titlebar_button_script()` **are** swept on deactivation, alongside that script's buttons — a script that owns a window's title-bar chrome owns its ⋯ rows too. Rows registered from some other bundle (a command script, a settings-tab script) survive until the next page load.
+
+---
+
 ### `registerUnfocusEffect( def )` — Experimental
 
 Register a visual treatment applied to every window that **isn't** focused — surfaced in **OpenStation Preferences → Effects → "Unfocused windows"**. The built-in effects (`darken` dims, `frost` blurs to frosted glass, `grayscale` drains colour) are registered through this same hook; plugins add their own the identical way. The framework owns *when* the effect runs (focus changes, the user's selection, minimized-window exclusion); your def owns *what* it does.

@@ -13,11 +13,23 @@
  * the next page reload — graceful backwards-compat. Open windows
  * repaint live via the registry's subscribe fan-out (see
  * `Window.renderCustomTitleBarButtons`).
+ *
+ * The sweep also covers **window menu items** (`registerWindowMenuItem`)
+ * owned by the departing handle. A script opted in through
+ * `openstation_register_titlebar_button_script()` owns everything it
+ * registered against a window's title bar, and a ⋯ row is title-bar
+ * chrome by another name — a plugin that ships both from one script
+ * shouldn't have to reload the page to see half of it disappear.
+ * Menu items registered from some other script (a command bundle, a
+ * settings-tab bundle) still need `owner` plus that script's own sync
+ * to be swept live; there is no server-side registration surface for
+ * menu items on their own yet.
  */
 
 import { doAction, HOOKS } from './../hooks';
 import { loadVendorScript } from './../wallpapers/vendor-loader';
 import { unregisterTitleBarButtonsByOwner } from './registry';
+import { unregisterWindowMenuItemsByOwner } from './../window-menu-items/registry';
 import type { DesktopTitleBarButtonScriptServerEntry } from './../types';
 
 export function createTitleBarButtonRegistrySync(): (
@@ -61,12 +73,14 @@ export function createTitleBarButtonRegistrySync(): (
 			}
 		}
 
-		// Deactivation — drop buttons owned by departing handles.
+		// Deactivation — drop buttons and ⋯ menu rows owned by
+		// departing handles.
 		for ( const handle of Array.from( loadedHandles ) ) {
 			if ( incomingHandles.has( handle ) ) {
 				continue;
 			}
 			unregisterTitleBarButtonsByOwner( handle );
+			unregisterWindowMenuItemsByOwner( handle );
 			loadedHandles.delete( handle );
 		}
 

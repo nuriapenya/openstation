@@ -102,6 +102,9 @@ The full surface is documented in [`javascript-reference.md`](./javascript-refer
 | `registerTitleBarButton` | `( def: TitleBarButtonDef ) => void` | Stable |
 | `unregisterTitleBarButton` | `( id: string ) => void` | Stable |
 | `listTitleBarButtons` | `() => TitleBarButtonDef[]` | Experimental |
+| `registerWindowMenuItem` | `( def: WindowMenuItemDef ) => void` | Experimental |
+| `unregisterWindowMenuItem` | `( id: string ) => void` | Experimental |
+| `listWindowMenuItems` | `() => WindowMenuItemDef[]` | Experimental |
 | `registerUnfocusEffect` | `( def: UnfocusEffectDef ) => void` | Experimental |
 | `unregisterUnfocusEffect` | `( id: string ) => void` | Experimental |
 | `listUnfocusEffects` | `() => UnfocusEffectDef[]` | Experimental |

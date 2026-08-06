@@ -55,6 +55,11 @@ import {
 } from './../title-bar-buttons/registry';
 import { paintTitleBarButtonIcon } from './../title-bar-buttons/paint-icon';
 import {
+	menuItemsForWindow,
+	subscribeWindowMenuItems,
+	type WindowMenuItemDef,
+} from './../window-menu-items/registry';
+import {
 	applyWindowTheme,
 	clearWindowTheme,
 } from './../window-chrome/apply';
@@ -94,7 +99,7 @@ import {
 } from './tabs';
 import {
 	closeActionsMenu,
-	flipStartupCheckOptimistically,
+	flipMenuItemCheckOptimistically,
 	openActionsMenu,
 	refreshStartupCheckState,
 	toggleActionsMenu,
@@ -279,6 +284,13 @@ export class Window {
 	 * @internal
 	 */
 	public _titleBarButtonsUnsubscribe: ( () => void ) | null = null;
+
+	/**
+	 * Unsubscribe handle for the window-menu-item registry. Cleared
+	 * on close, same reasoning as the title-bar-button handle above.
+	 * @internal
+	 */
+	public _windowMenuItemsUnsubscribe: ( () => void ) | null = null;
 
 	/**
 	 * Unsubscribe handle for the window-theme registry. Cleared on
@@ -525,6 +537,19 @@ export class Window {
 		this.renderCustomTitleBarButtons();
 		this._titleBarButtonsUnsubscribe = subscribeTitleBarButtons( () => {
 			this.renderCustomTitleBarButtons();
+		} );
+
+		// Plugin rows in the ⋯ actions menu. Same repaint-on-registry-
+		// change contract as the buttons above, which is what lets a
+		// lazily-loaded native-window bundle register a row for the
+		// window that just loaded it and have it appear without the
+		// user closing and reopening the window.
+		this.renderCustomMenuItems();
+		this._windowMenuItemsUnsubscribe = subscribeWindowMenuItems( () => {
+			if ( this._isDestroyed ) {
+				return;
+			}
+			this.renderCustomMenuItems();
 		} );
 
 		// Apply Layer-1 theme tokens (CSS variables) to the outer
@@ -1053,7 +1078,7 @@ export class Window {
 					// optimistic flip + the server-confirmation refresh
 					// feels instant.
 					e.stopPropagation();
-					flipStartupCheckOptimistically( startup );
+					flipMenuItemCheckOptimistically( startup );
 					this.onToggleStartup?.( this );
 				} );
 				// Refresh the check state whenever the public
@@ -2462,6 +2487,94 @@ export class Window {
 	}
 
 	/**
+	 * Paint plugin-registered rows into the ⋯ actions menu.
+	 *
+	 * Rows are appended after the framework's built-in items and
+	 * carry `data-menu-item-id`, which is both the repaint key (every
+	 * call clears only the rows it owns, never the built-ins) and the
+	 * hook a plugin can use to find its own row in the DOM.
+	 *
+	 * Called on construct, on every registry change, and on every
+	 * menu open — the last one is what makes `checked()` the source
+	 * of truth for checkable rows without the plugin having to
+	 * request a repaint when it persists a new value.
+	 */
+	public renderCustomMenuItems(): void {
+		const panel = this.element.querySelector< HTMLElement >(
+			'.os-window__menu-panel',
+		);
+		if ( ! panel ) {
+			return;
+		}
+		panel
+			.querySelectorAll( '[data-menu-item-id]' )
+			.forEach( ( el ) => el.remove() );
+
+		const defs: WindowMenuItemDef[] = menuItemsForWindow( this );
+		for ( const def of defs ) {
+			const item = document.createElement( 'os-menu-item' );
+			item.dataset.menuItemId = def.id;
+			item.setAttribute( 'value', def.id );
+			item.classList.add( 'os-window__menu-item' );
+			item.classList.add( 'os-window__menu-item--custom' );
+			item.textContent = def.label;
+
+			if ( def.checkable ) {
+				item.setAttribute( 'role', 'menuitemcheckbox' );
+				let isChecked = false;
+				try {
+					isChecked = !! def.checked?.( this );
+				} catch ( err ) {
+					if ( typeof console !== 'undefined' ) {
+						console.error(
+							'[openstation] window-menu-item checked() threw:',
+							def.id,
+							err,
+						);
+					}
+				}
+				if ( isChecked ) {
+					item.setAttribute( 'checked', '' );
+				}
+			} else {
+				item.setAttribute( 'role', 'menuitem' );
+				if ( def.icon ) {
+					item.setAttribute( 'icon', def.icon );
+				}
+			}
+
+			// A checkable row keeps the menu open by default so the
+			// user can see the indicator flip; an action row closes
+			// it, like every built-in verb. `closeOnClick` overrides
+			// either default.
+			const closeOnClick = def.closeOnClick ?? ! def.checkable;
+
+			item.addEventListener( 'os-menu-item-click', ( e: Event ) => {
+				e.stopPropagation();
+				if ( def.checkable ) {
+					flipMenuItemCheckOptimistically( item );
+				}
+				if ( closeOnClick ) {
+					closeActionsMenu( this );
+				}
+				try {
+					def.onClick( this );
+				} catch ( err ) {
+					if ( typeof console !== 'undefined' ) {
+						console.error(
+							'[openstation] window-menu-item onClick threw:',
+							def.id,
+							err,
+						);
+					}
+				}
+			} );
+
+			panel.appendChild( item );
+		}
+	}
+
+	/**
 	 * Publish a payload on a named channel into this window's
 	 * content. The unified abstraction over iframe `postMessage` and
 	 * native render-callback dispatch — plugin authors write the
@@ -3133,6 +3246,12 @@ export class Window {
 		if ( this._titleBarButtonsUnsubscribe ) {
 			this._titleBarButtonsUnsubscribe();
 			this._titleBarButtonsUnsubscribe = null;
+		}
+
+		// Same for the ⋯ menu rows.
+		if ( this._windowMenuItemsUnsubscribe ) {
+			this._windowMenuItemsUnsubscribe();
+			this._windowMenuItemsUnsubscribe = null;
 		}
 
 		// Drop the window-theme subscription pre-animation — no

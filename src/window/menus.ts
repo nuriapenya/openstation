@@ -2,9 +2,11 @@
  * OpenStation — Window title-bar actions menu.
  *
  * Open / close lifecycle for the ⋯ menu in every window's title bar
- * (native and iframe). Items today: "Open on startup" (checkable),
+ * (native and iframe). Built-in items: "Open on startup" (checkable),
  * optional "Open another <page>" for multi-capable pages, and — iframe
  * windows only — "Open in new window", "Reload", "Open in browser tab".
+ * Plugin rows registered through `wp.os.registerWindowMenuItem()` are
+ * painted after those by `Window.renderCustomMenuItems()`.
  * Each free function here takes the `Window` instance as its first arg.
  */
 
@@ -58,6 +60,14 @@ export function openActionsMenu( win: Window ): void {
 	if ( startup ) {
 		refreshStartupCheckState( win, startup );
 	}
+
+	// Repaint plugin rows for the same reason: their `checked()`
+	// readers are the source of truth, and the value behind one can
+	// change without the registry mutating (the plugin persisted a
+	// new preference, another window flipped it, …). Repainting on
+	// open makes "what the row says" and "what the plugin thinks"
+	// impossible to drift apart for longer than one menu open.
+	win.renderCustomMenuItems();
 
 	if ( ! win._boundOnDocumentPointerDown ) {
 		win._boundOnDocumentPointerDown = ( e: PointerEvent ) => {
@@ -113,14 +123,19 @@ export function closeActionsMenu( win: Window ): void {
 }
 
 /**
- * Flip the "Open on startup" check state immediately on click so the
- * user sees instant feedback — the REST round-trip confirms shortly
- * after via the `os-default-window-changed` event, which
- * calls `refreshStartupCheckState` with the canonical state. If the
- * REST fails the optimistic flip stays (wrong) until the next menu
- * open, where the canonical check takes over.
+ * Flip a checkable menu row's indicator immediately on click so the
+ * user sees instant feedback before the write that backs it lands.
+ *
+ * For "Open on startup" the REST round-trip confirms shortly after via
+ * the `os-default-window-changed` event, which calls
+ * `refreshStartupCheckState` with the canonical state. Plugin rows
+ * registered through `registerWindowMenuItem` get the same treatment,
+ * with the next menu open re-reading their `checked()` reader.
+ *
+ * Either way the correction is deferred: if the write failed, the
+ * optimistic flip stays (wrong) until that canonical read happens.
  */
-export function flipStartupCheckOptimistically( item: HTMLElement ): void {
+export function flipMenuItemCheckOptimistically( item: HTMLElement ): void {
 	const isChecked = item.hasAttribute( 'checked' );
 	if ( isChecked ) {
 		item.removeAttribute( 'checked' );

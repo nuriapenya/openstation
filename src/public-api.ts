@@ -131,6 +131,10 @@ export type {
 	TitleBarButtonRenderCtx,
 } from './title-bar-buttons/registry';
 
+// ----- Window menu items (rows in a window's ⋯ actions menu) -----
+
+export type { WindowMenuItemDef } from './window-menu-items/registry';
+
 // ----- Cross-window connection bridge -----
 
 export type { ConnectOptions, WindowConnection } from './connection';

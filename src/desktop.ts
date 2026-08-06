@@ -79,6 +79,9 @@ import {
 	type TitleBarButtonDef,
 } from './title-bar-buttons/registry';
 import { createTitleBarButtonRegistrySync } from './title-bar-buttons/server-sync';
+import {
+	type WindowMenuItemDef,
+} from './window-menu-items/registry';
 import { type UnfocusEffectDef } from './effects/types';
 import { type WindowRevealDef } from './reveals/types';
 import { startWindowLinksEngine } from './window-links/engine';
@@ -1133,6 +1136,21 @@ export interface OpenStationPublicApi {
 	unregisterTitleBarButton: ( id: string ) => void;
 	/** Snapshot of registered title-bar buttons. */
 	listTitleBarButtons: () => TitleBarButtonDef[];
+	/**
+	 * Register a row in the ⋯ actions menu of any matching window —
+	 * the home for a per-window preference or an infrequent verb that
+	 * hasn't earned a permanent title-bar button. Supports action rows
+	 * and checkbox rows (`checkable` + `checked`). See
+	 * `WindowMenuItemDef` for the full options shape.
+	 *
+	 * Throws a `RegistrationError` on validation failure (the
+	 * message names the bad field).
+	 */
+	registerWindowMenuItem: ( def: WindowMenuItemDef ) => void;
+	/** Remove a previously registered window menu item. */
+	unregisterWindowMenuItem: ( id: string ) => void;
+	/** Snapshot of registered window menu items. */
+	listWindowMenuItems: () => WindowMenuItemDef[];
 	/**
 	 * Register (or replace) an unfocused-window effect — a visual
 	 * treatment applied to every window that isn't focused, surfaced in

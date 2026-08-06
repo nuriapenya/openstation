@@ -28,6 +28,7 @@ defined( 'ABSPATH' ) || exit;
 - [Register a desktop theme — whole-OS reskin from a plugin](./register-desktop-theme.md)
 - [Window controls — reorder / hide / replace close-min-max](./window-controls.md)
 - [Window slots — replace icon, title, banners above/below the title bar](./window-slot.md)
+- [Window menu items — add rows to a window's ⋯ menu (Experimental)](./window-menu-item.md)
 - [Custom window chrome — full title-bar replacement (Experimental)](./custom-chrome.md)
 - [Register a custom unfocused-window effect (Experimental)](./custom-unfocus-effect.md)
 - [Register a custom window reveal (Experimental)](./window-reveal.md)
